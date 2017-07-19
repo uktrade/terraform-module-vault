@@ -34,7 +34,10 @@ resource "aws_dynamodb_table" "vault-db" {
   hash_key = "${var.vault_conf["dynamodb.hash_key"]}"
   read_capacity = "${var.vault_conf["dynamodb.read_capacity"]}"
   write_capacity = "${var.vault_conf["dynamodb.write_capacity"]}"
-  attribute {}
+  attribute {
+    name = "key"
+    type = "S"
+  }
 }
 
 resource "aws_launch_configuration" "vault" {
