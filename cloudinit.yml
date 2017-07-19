@@ -53,7 +53,7 @@ write_files:
     [Service]
     EnvironmentFile=/etc/default/vault
     ExecStartPre=-/usr/bin/docker rm -f vault-server
-    ExecStart=/usr/bin/docker run --privileged --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/var/lib/vault:z -v /etc/vault:/etc/vault:ro --env-file=/etc/default/vault --network=host -p ${vault_port}:${vault_port} vault:${vault_version}
+    ExecStart=/usr/bin/docker run --privileged --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/vault/file:z -v /etc/vault:/vault/config:ro -v /var/log/vault: /vault/logs:z --env-file=/etc/default/vault --network=host -p ${vault_port}:${vault_port} vault:${vault_version}
     ExecStop=/usr/bin/docker stop vault-server
     SyslogIdentifier=vault-server
     Restart=always
@@ -80,7 +80,7 @@ runcmd:
     }]
   }' > /tmp/route53_update.json &&
   aws route53 change-resource-record-sets --hosted-zone-id ${dns_zone_id} --change-batch file:///tmp/route53_update.json
-- mkdir /var/lib/vault
+- mkdir -p /var/lib/vault /var/log/vault
 - VAULT_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
 - sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/vault/vault.hcl
 - sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/default/vault
