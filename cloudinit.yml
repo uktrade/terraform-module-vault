@@ -1,0 +1,97 @@
+#cloud-config
+
+datasource:
+  Ec2:
+    timeout: 60
+    max_wait: 60
+    metadata_urls:
+      - http://169.254.169.254
+      - http://instance-data
+
+package_update: true
+package_upgrade: true
+
+packages:
+- docker.io
+- jq
+- awscli
+
+write_files:
+- path: /etc/aws/aws.conf
+  permissions: '0644'
+  content: |
+    [Global]
+    Zone = ${aws_region}
+- path: /etc/vault/vault.conf
+  permissions: '0644'
+  content: |
+    # vault-server configuration file
+    cluster_name = "${vault_cluster}"
+    storage "dynamodb" {
+      ha_enabled = "true"
+      advertise_addr = "https://__VAULT_NODE_ADDR__:8200"
+    }
+    listener "tcp" {
+      address = "__VAULT_NODE_ADDR__:8200"
+    }
+- path: /etc/default/vault
+  permissions: '0644'
+  content: |
+    VAULT_ADDR="https://__VAULT_NODE_ADDR__:8200"
+    VAULT_CLUSTER_ADDR="https://${vault_cluster}"
+    VAULT_TLS_SERVER_NAME="${vault_cluster}"
+    AWS_DEFAULT_REGION="${aws_region}"
+    AWS_DYNAMODB_TABLE="${dynamodb_table}"
+- path: /etc/systemd/system/vault-server.service
+  permissions: '0644'
+  content: |
+    [Unit]
+    Description=The Redis Server container
+    After=docker.service
+    Requires=docker.service
+    PartOf=docker.service
+    [Service]
+    EnvironmentFile=/etc/default/vault-server
+    ExecStartPre=-/usr/bin/docker rm -f vault-server
+    ExecStart=/usr/bin/docker run --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/var/lib/vault:z -v /etc/vault:/etc/vault:ro --env-file=/etc/default/vault-server --network=host -p ${vault_port}:${vault_port} --cap-add=IPC_LOCK vault:${vault_version} __REDIS_MASTER_REPLICATION__
+    ExecStop=/usr/bin/docker stop vault-server
+    SyslogIdentifier=vault-server
+    Restart=always
+    RestartSec=5s
+    [Install]
+    WantedBy=docker.service
+
+runcmd:
+- export AWS_DEFAULT_REGION=${aws_region}
+- INSTANCE_ID=$(curl -Lfs http://169.254.169.254/latest/meta-data/instance-id)
+- >
+  echo '{
+    "Comment": "auto updated @ '$(date)'",
+    "Changes": [{
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "'$(curl -Lfs http://169.254.169.254/latest/meta-data/local-hostname)'",
+        "Type": "A",
+        "TTL": 60,
+        "ResourceRecords": [{
+          "Value": "'$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)'"
+        }]
+      }
+    }]
+  }' > /tmp/route53_update.json &&
+  aws route53 change-resource-record-sets --hosted-zone-id ${dns_zone_id} --change-batch file:///tmp/route53_update.json
+- mkdir /var/lib/vault
+- >
+  REDIS_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
+  REDIS_MASTER="$(aws ec2 describe-instances --instance-ids "`aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${cluster_asg} | jq -r '[.AutoScalingGroups[].Instances[].InstanceId]'`" --filters Name=instance-state-name,Values=running | jq -r '[.Reservations[].Instances[] | {"InstanceId": .InstanceId, "PrivateIpAddress": .PrivateIpAddress, "LaunchTime": .LaunchTime | sub(".000"; "") | fromdate}] | sort_by(.LaunchTime) | first .PrivateIpAddress')"
+- sed -i "s/__REDIS_NODE_IP__/$REDIS_NODE/g" /etc/vault/sentinel.conf
+- sed -i "s/__REDIS_MASTER_IP__/$REDIS_MASTER/g" /etc/vault/sentinel.conf
+- >
+  if [ "$REDIS_MASTER" = "$REDIS_NODE" ]; then
+    sed -i "s/__REDIS_MASTER_REPLICATION__//g" /etc/systemd/system/vault-server.service
+  else
+    sed -i "s/__REDIS_MASTER_REPLICATION__/--slaveof $REDIS_MASTER ${vault_port}/g" /etc/systemd/system/vault-server.service
+  fi
+- systemctl daemon-reload
+- systemctl enable vault-server
+- systemctl start vault-server
