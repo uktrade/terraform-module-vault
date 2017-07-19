@@ -39,7 +39,7 @@ data "template_file" "dynamodb_policy" {
   vars {
     aws_region = "${var.vpc_conf["region"]}"
     aws_account_id = "${var.aws_conf["account_id"]}"
-    dynamodb_table
+    dynamodb_table = "${aws_dynamodb_table.vault-db.id}
   }
 }
 
