@@ -22,7 +22,7 @@ write_files:
   content: |
     [Global]
     Zone = ${aws_region}
-- path: /etc/vault/vault.conf
+- path: /etc/vault/vault.hcl
   permissions: '0644'
   content: |
     # vault-server configuration file
@@ -81,17 +81,8 @@ runcmd:
   }' > /tmp/route53_update.json &&
   aws route53 change-resource-record-sets --hosted-zone-id ${dns_zone_id} --change-batch file:///tmp/route53_update.json
 - mkdir /var/lib/vault
-- >
-  REDIS_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
-  REDIS_MASTER="$(aws ec2 describe-instances --instance-ids "`aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${cluster_asg} | jq -r '[.AutoScalingGroups[].Instances[].InstanceId]'`" --filters Name=instance-state-name,Values=running | jq -r '[.Reservations[].Instances[] | {"InstanceId": .InstanceId, "PrivateIpAddress": .PrivateIpAddress, "LaunchTime": .LaunchTime | sub(".000"; "") | fromdate}] | sort_by(.LaunchTime) | first .PrivateIpAddress')"
-- sed -i "s/__REDIS_NODE_IP__/$REDIS_NODE/g" /etc/vault/sentinel.conf
-- sed -i "s/__REDIS_MASTER_IP__/$REDIS_MASTER/g" /etc/vault/sentinel.conf
-- >
-  if [ "$REDIS_MASTER" = "$REDIS_NODE" ]; then
-    sed -i "s/__REDIS_MASTER_REPLICATION__//g" /etc/systemd/system/vault-server.service
-  else
-    sed -i "s/__REDIS_MASTER_REPLICATION__/--slaveof $REDIS_MASTER ${vault_port}/g" /etc/systemd/system/vault-server.service
-  fi
+- VAULT_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
+- sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/vault/vault.hcl
 - systemctl daemon-reload
 - systemctl enable vault-server
 - systemctl start vault-server

@@ -22,9 +22,10 @@ data "template_file" "vault-cloudinit" {
     aws_region = "${var.vpc_conf["region"]}"
     dns_zone_id = "${var.vpc_conf["zone_id"]}"
     cluster_id = "${var.aws_conf["domain"]}"
-    cluster_asg = "${var.aws_conf["domain"]}-${var.vault_conf["id"]}"
     vault_version = "${var.vault_conf["version"]}"
     vault_port = "${var.vault_conf["port"]}"
+    vault_cluster = "${var.vault_conf["id"]}.${var.aws_conf["domain"]}"
+    dynamodb_table = "${aws_dynamodb_table.vault-db.id}"
   }
 }
 
@@ -33,6 +34,7 @@ resource "aws_dynamodb_table" "vault-db" {
   hash_key = "${var.vault_conf["dynamodb.hash_key"]}"
   read_capacity = "${var.vault_conf["dynamodb.read_capacity"]}"
   write_capacity = "${var.vault_conf["dynamodb.write_capacity"]}"
+  attribute {}
 }
 
 resource "aws_launch_configuration" "vault" {
