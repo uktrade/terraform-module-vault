@@ -83,6 +83,7 @@ runcmd:
 - mkdir /var/lib/vault
 - VAULT_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
 - sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/vault/vault.hcl
+- sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/default/vault
 - systemctl daemon-reload
 - systemctl enable vault-server
 - systemctl start vault-server
