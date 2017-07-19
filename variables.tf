@@ -16,7 +16,7 @@ variable "vault_conf" {
     capacity = "2"
     internal = "true"
     port = "8200"
-    dynamodb.hash_key = "id"
+    dynamodb.hash_key = "key"
     dynamodb.read_capacity = "5"
     dynamodb.write_capacity = "5"
   }
