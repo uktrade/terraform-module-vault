@@ -45,6 +45,6 @@ data "template_file" "dynamodb_policy" {
 
 resource "aws_iam_role_policy" "dynamodb" {
   name = "${var.aws_conf["domain"]}-vault-dynamodb-policy-${var.vault_conf["id"]}"
-  policy = "${data.template_file.route53_policy.rendered}"
+  policy = "${data.template_file.dynamodb_policy.rendered}"
   role = "${aws_iam_role.node-role.name}"
 }
