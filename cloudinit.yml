@@ -53,7 +53,7 @@ write_files:
     [Service]
     EnvironmentFile=/etc/default/vault
     ExecStartPre=-/usr/bin/docker rm -f vault-server
-    ExecStart=/usr/bin/docker run --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/var/lib/vault:z -v /etc/vault:/etc/vault:ro --env-file=/etc/default/vault --network=host -p ${vault_port}:${vault_port} --cap-add=IPC_LOCK vault:${vault_version}
+    ExecStart=/usr/bin/docker run --privileged --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/var/lib/vault:z -v /etc/vault:/etc/vault:ro --env-file=/etc/default/vault --network=host -p ${vault_port}:${vault_port} vault:${vault_version}
     ExecStop=/usr/bin/docker stop vault-server
     SyslogIdentifier=vault-server
     Restart=always
