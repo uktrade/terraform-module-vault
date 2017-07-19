@@ -27,12 +27,14 @@ write_files:
   content: |
     # vault-server configuration file
     cluster_name = "${vault_cluster}"
+    disable_mlock = 1
     storage "dynamodb" {
       ha_enabled = "true"
       advertise_addr = "https://__VAULT_NODE_ADDR__:8200"
     }
     listener "tcp" {
       address = "__VAULT_NODE_ADDR__:8200"
+      tls_disable = 1
     }
 - path: /etc/default/vault
   permissions: '0644'
@@ -53,7 +55,7 @@ write_files:
     [Service]
     EnvironmentFile=/etc/default/vault
     ExecStartPre=-/usr/bin/docker rm -f vault-server
-    ExecStart=/usr/bin/docker run --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/vault/file:z -v /etc/vault:/vault/config:z -v /var/log/vault:/vault/logs:z --env-file=/etc/default/vault --network=host -p ${vault_port}:${vault_port} --privileged --cap-add IPC_LOCK vault:${vault_version} server
+    ExecStart=/usr/bin/docker run --name vault-server --hostname $(hostname).${cluster_id} --rm -v /var/lib/vault:/vault/file:z -v /etc/vault:/vault/config:z -v /var/log/vault:/vault/logs:z --env-file /etc/default/vault --network host -p ${vault_port}:${vault_port} --security-opt seccomp=unconfined --cap-add IPC_LOCK vault:${vault_version} server
     ExecStop=/usr/bin/docker stop vault-server
     SyslogIdentifier=vault-server
     Restart=always
