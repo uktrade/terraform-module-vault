@@ -158,7 +158,7 @@ resource "aws_elb" "vault" {
     lb_port            = "${var.vault_conf["port"]}"
     lb_protocol        = "https"
     instance_port      = "${var.vault_conf["port"]}"
-    instance_protocol  = "https"
+    instance_protocol  = "http"
     ssl_certificate_id = "${var.vpc_conf["acm_certificate"]}"
   }
 
