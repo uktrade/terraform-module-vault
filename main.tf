@@ -130,8 +130,8 @@ resource "aws_security_group" "vault-elb" {
   vpc_id = "${var.vpc_conf["id"]}"
 
   ingress {
-    from_port = "${var.vault_conf["port"]}"
-    to_port = "${var.vault_conf["port"]}"
+    from_port = 443
+    to_port = 443
     protocol = "tcp"
     security_groups = ["${var.vpc_conf["security_group"]}"]
   }
@@ -155,7 +155,7 @@ resource "aws_elb" "vault" {
   ]
 
   listener {
-    lb_port            = "${var.vault_conf["port"]}"
+    lb_port            = 443
     lb_protocol        = "https"
     instance_port      = "${var.vault_conf["port"]}"
     instance_protocol  = "http"

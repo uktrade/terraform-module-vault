@@ -30,7 +30,7 @@ write_files:
     disable_mlock = 1
     storage "dynamodb" {
       ha_enabled = "true"
-      advertise_addr = "https://__VAULT_NODE_ADDR__:8200"
+      advertise_addr = "http://__VAULT_NODE_ADDR__:8200"
     }
     listener "tcp" {
       address = "__VAULT_NODE_ADDR__:8200"
@@ -39,8 +39,9 @@ write_files:
 - path: /etc/default/vault
   permissions: '0644'
   content: |
-    VAULT_ADDR=https://__VAULT_NODE_ADDR__:8200
+    VAULT_ADDR=https://${vault_cluster}
     VAULT_CLUSTER_ADDR=https://${vault_cluster}
+    VAULT_REDIRECT_ADDR=https://${vault_cluster}
     VAULT_TLS_SERVER_NAME=${vault_cluster}
     AWS_DEFAULT_REGION=${aws_region}
     AWS_DYNAMODB_TABLE=${dynamodb_table}
@@ -85,7 +86,6 @@ runcmd:
 - mkdir -p /var/lib/vault /var/log/vault
 - VAULT_NODE="$(curl -Lfs http://169.254.169.254/latest/meta-data/local-ipv4)"
 - sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/vault/vault.hcl
-- sed -i "s/__VAULT_NODE_ADDR__/$VAULT_NODE/g" /etc/default/vault
 - systemctl daemon-reload
 - systemctl enable vault-server
 - systemctl start vault-server
